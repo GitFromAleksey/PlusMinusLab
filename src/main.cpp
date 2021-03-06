@@ -1,3 +1,14 @@
+//============================================================================
+// Name        : PlusMinusLab.cpp
+// Author      : Aleksey
+// Version     :
+// Copyright   : Your copyright notice
+// Description : Hello World in C++, Ansi-style
+//============================================================================
+
+#include <iostream>
+using namespace std;
+
 #include "serialBus.h"
 
 
@@ -31,6 +42,7 @@ static void serialCallback(void *context, const SerialBus_Event *evt)
 
 int main ()
 {
+	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
 	/* init pins here */
 	SerialBus__init__(&port, USART1, DMA1_Channel2, DMA1_Channel3);
 	SerialBus_setHandler(&port, serialCallback, NULL);
