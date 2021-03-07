@@ -26,6 +26,10 @@ using namespace std;
 
 	#undef DMA1_Channel3
 	#define DMA1_Channel3 &dma1_channel3
+
+	const char TestMsg1[] = "message1";
+	const char TestMsg2[] = "message2";
+	const char TestMsg3[] = "message3";
 #endif
 
 static SerialBus port;
@@ -46,11 +50,14 @@ void DMA1_Channel2_3_IRQHandler();
 static void serialCallback(void *context, const SerialBus_Event *evt)
 {
 #ifdef DEBUG
-	cout << "serialCallback(): ";
+	cout << "serialCallback(): BEGIN" << endl;
 #endif
 	switch (evt->type)
 	{
 		case SERIALBUS_EVENT_DATA_RECEIVED:
+#ifdef DEBUG
+	cout << "SERIALBUS_EVENT_DATA_RECEIVED,";
+#endif
 			bufferTog ^= 1;
 			SerialBus_setRxBuffer(&port, buffer[bufferTog], sizeof(buffer0));
 			// should send "Echo: {original message}\r\n"
@@ -59,11 +66,16 @@ static void serialCallback(void *context, const SerialBus_Event *evt)
 			SerialBus_write(&port, terminator, sizeof(terminator) - 1);
 			break;
 		case SERIALBUS_EVENT_TRANSMIT_COMPLETE:
-
+#ifdef DEBUG
+	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
+#endif
 			break;
 		default:
 			break;
 	}
+#ifdef DEBUG
+	cout << "serialCallback(): END" << endl;
+#endif
 }
 
 
@@ -78,47 +90,33 @@ int main ()
 	SerialBus_setHandler(&port, serialCallback, NULL);
 	/* enable interrupts here */
 	SerialBus_setRxBuffer(&port, buffer0, sizeof(buffer0));
-	for (size_t i = 0; i < 10; ++i)
+	for (size_t i = 0; i < 1; ++i)
 	{
 #ifdef DEBUG
 		cout << "Main thread i = " << i << endl;
 
-		port.uart->DR = 'm';
-		USART1_IRQHandler();
-		port.uart->DR = 'e';
-		USART1_IRQHandler();
-		port.uart->DR = 's';
-		USART1_IRQHandler();
-		port.uart->DR = 's';
-		USART1_IRQHandler();
-		port.uart->DR = 'a';
-		USART1_IRQHandler();
-		port.uart->DR = 'g';
-		USART1_IRQHandler();
-		port.uart->DR = 'e';
-		USART1_IRQHandler();
-		port.uart->DR = '1';
-		USART1_IRQHandler();
+		for(size_t j = 0; j < sizeof(TestMsg1)-1; ++j)
+		{
+			port.uart->DR = TestMsg1[j];
+			USART1_IRQHandler();
+		}
 		SerialBus_process(&port);
 
-		port.uart->DR = 'm';
-		USART1_IRQHandler();
-		port.uart->DR = 'e';
-		USART1_IRQHandler();
-		port.uart->DR = 's';
-		USART1_IRQHandler();
-		port.uart->DR = 's';
-		USART1_IRQHandler();
-		port.uart->DR = 'a';
-		USART1_IRQHandler();
-		port.uart->DR = 'g';
-		USART1_IRQHandler();
-		port.uart->DR = 'e';
-		USART1_IRQHandler();
-		port.uart->DR = '2';
-		USART1_IRQHandler();
-#endif
+		for(size_t j = 0; j < sizeof(TestMsg2)-1; ++j)
+		{
+			port.uart->DR = TestMsg2[j];
+			USART1_IRQHandler();
+		}
+		SerialBus_process(&port);
 
+		for(size_t j = 0; j < sizeof(TestMsg3)-1; ++j)
+		{
+			port.uart->DR = TestMsg3[j];
+			USART1_IRQHandler();
+		}
+		SerialBus_process(&port);
+
+#endif
 		SerialBus_process(&port);
 		__WFI();
 	}
@@ -149,7 +147,7 @@ void DMA1_Channel2_3_IRQHandler()
 void USART1_IRQHandler()
 {
 #ifdef DEBUG
-	cout << "USART1_IRQHandler()" << endl;
+//	cout << "USART1_IRQHandler()" << endl;
 	port.uart->SR |= USART_SR_RXNE;
 #endif
 	SerialBus___uartIRQ(&port);
