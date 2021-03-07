@@ -1,8 +1,14 @@
 #ifndef SERIAL_BUS_H
 #define SERIAL_BUS_H
 
-#include CMSIS_device_header
+#include "main.hpp"
+#include "stm32f103xb.h"
 #include <stdint.h>
+
+#ifdef DEBUG
+	#include <iostream>
+	using namespace std;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +47,13 @@ typedef void (*SerialBus_Handler_Type)(void *context, const SerialBus_Event *evt
 
 typedef struct SerialBus {
 	/* your members here */
+	USART_TypeDef * uart;
+	DMA_Channel_TypeDef * rx_dma;
+	DMA_Channel_TypeDef * tx_dma;
+	SerialBus_Handler_Type serial_bus_handler;
+	uint8_t * buffer;
+	uint16_t buffer_lenght;
+	uint16_t buffer_index;
 } SerialBus;
 
 
