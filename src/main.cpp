@@ -67,7 +67,7 @@ static void serialCallback(void *context, const SerialBus_Event *evt)
 			break;
 		case SERIALBUS_EVENT_TRANSMIT_COMPLETE:
 #ifdef DEBUG
-//	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
+	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
 #endif
 			break;
 		default:
@@ -102,19 +102,21 @@ int main ()
 		}
 		SerialBus_process(&port);
 
-		for(size_t j = 0; j < sizeof(TestMsg2)-1; ++j)
-		{
-			port.uart->DR = TestMsg2[j];
-			USART1_IRQHandler();
-		}
-		SerialBus_process(&port);
-
-		for(size_t j = 0; j < sizeof(TestMsg3)-1; ++j)
-		{
-			port.uart->DR = TestMsg3[j];
-			USART1_IRQHandler();
-		}
-		SerialBus_process(&port);
+		for(size_t j = 0; j < 17; ++j)
+			SerialBus_process(&port);
+//		for(size_t j = 0; j < sizeof(TestMsg2)-1; ++j)
+//		{
+//			port.uart->DR = TestMsg2[j];
+//			USART1_IRQHandler();
+//		}
+//		SerialBus_process(&port);
+//
+//		for(size_t j = 0; j < sizeof(TestMsg3)-1; ++j)
+//		{
+//			port.uart->DR = TestMsg3[j];
+//			USART1_IRQHandler();
+//		}
+//		SerialBus_process(&port);
 
 #endif
 		SerialBus_process(&port);

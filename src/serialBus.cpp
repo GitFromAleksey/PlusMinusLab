@@ -42,10 +42,11 @@ void SerialBus_setRxBuffer(SerialBus *self, uint8_t *buffer, uint32_t bufferLeng
 	cout << "SerialBus_setRxBuffer(): ";
 #endif
 
-	self->evt.rx.buffer = buffer;
-	self->evt.rx.length = 0;
+	self->buffer = buffer;
+	self->buffer = buffer;
+	self->rx_data_lenght = 0;
 	self->buffer_lenght = bufferLength;
-	self->evt.tx.length = 0;
+	self->tx_data_lenght = 0;
 
 #ifdef DEBUG
 	cout << endl;
@@ -65,20 +66,19 @@ void SerialBus_write(SerialBus *self, uint8_t *buffer, uint32_t bufferLength)
 
 	while(bufferLength != 0)
 	{
-		if(self->evt.tx.length >= self->buffer_lenght)
+		if(self->tx_data_lenght >= self->buffer_lenght)
 			return;
 
-		// TODO хрен знает как тут писать в tx буфер, так как он const. Будем писать пока в rx
-		self->evt.rx.buffer[self->evt.tx.length] = *buffer;
-		++self->evt.tx.length;
+		self->buffer[self->tx_data_lenght] = *buffer;
+		++self->tx_data_lenght;
 
 		++buffer;
 		--bufferLength;
 	}
-
+	self->tx_data_counter = 0;
 #ifdef DEBUG
 #ifdef DEBUG_SerialBus_write
-	cout << " self->evt.rx.buffer: " << self->evt.rx.buffer;
+	cout << " self->buffer: " << self->buffer;
 	cout << endl;
 #endif
 #endif
@@ -92,33 +92,31 @@ void SerialBus_process(SerialBus *self)
 	SerialBus_Event event;
 	// это основной поток UART
 	// проверка буфера на наличие входящих данных
-	if(self->evt.rx.length > 0)
+	if(self->rx_data_lenght > 0)
 	{
-		cout << "Received message: " << self->evt.rx.buffer << endl;
-
-		event = self->evt;
-		self->evt.rx.length = 0;
+		event.rx.buffer = self->buffer;
+		event.rx.length = self->rx_data_lenght;
+		event.type = SERIALBUS_EVENT_DATA_RECEIVED;
+		self->rx_data_lenght = 0;
 		self->serial_bus_handler(NULL, &event);
 	}
 
-//	if(self->tx_buffer_index > 0)
-	if(self->evt.tx.length > 0)
+	if(self->tx_data_lenght > 0)
 	{
-//		if(self->uart->SR | USART_SR_TXE)	//!< Transmit Data Register Empty
-//		{
-//			self->uart->DR = 0; // next byte
-//			self->uart->CR1 |= USART_CR1_TE; //!< Transmitter Enable
-//		}
-
-
-		cout << "Transmit echo message: " << self->evt.tx.buffer << endl;
-
-//		self->evt.tx.length = self->tx_buffer_index;
-//		self->tx_buffer_index = 0;
-		self->evt.type = SERIALBUS_EVENT_TRANSMIT_COMPLETE;
-		event = self->evt;
-		self->evt.tx.length = 0;
-		self->serial_bus_handler(NULL, &event);
+		if(self->uart->SR | USART_SR_TXE)	//!< Transmit Data Register Empty
+		{
+			if(self->tx_data_counter < self->tx_data_lenght)
+			{
+				self->uart->DR = self->buffer[self->tx_data_counter++]; // next byte
+				self->uart->CR1 |= USART_CR1_TE; //!< Transmitter Enable
+			}
+			else
+			{
+				self->tx_data_lenght = 0;
+				event.type = SERIALBUS_EVENT_TRANSMIT_COMPLETE;
+				self->serial_bus_handler(NULL, &event);
+			}
+		}
 	}
 
 #ifdef DEBUG
@@ -135,11 +133,10 @@ void SerialBus___uartIRQ(SerialBus *self)
 	// чтение принятого по UART байта
 	if(self->uart->SR & USART_SR_RXNE)
 	{
-		if(self->evt.rx.length < self->buffer_lenght)
+		if(self->rx_data_lenght < self->buffer_lenght)
 		{
-			self->evt.rx.buffer[self->evt.rx.length] = (self->uart->DR & 0xFF);
-			++self->evt.rx.length;
-			self->evt.type = SERIALBUS_EVENT_DATA_RECEIVED;
+			self->buffer[self->rx_data_lenght] = (self->uart->DR & 0xFF);
+			++self->rx_data_lenght;
 		}
 	}
 	// помещение принятого байта во входную очередь(буфер)

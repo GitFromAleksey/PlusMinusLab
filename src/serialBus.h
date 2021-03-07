@@ -51,8 +51,11 @@ typedef struct SerialBus {
 	DMA_Channel_TypeDef * rx_dma;
 	DMA_Channel_TypeDef * tx_dma;
 	SerialBus_Handler_Type serial_bus_handler;
+	uint8_t *buffer;
 	uint32_t buffer_lenght;
-	SerialBus_Event evt;
+	uint32_t rx_data_lenght; // кол-во принятых байт
+	uint32_t tx_data_lenght; // кол-во байт для отправки
+	uint32_t tx_data_counter; // счетчик отправленных байт
 } SerialBus;
 
 
