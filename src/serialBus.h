@@ -1,7 +1,7 @@
 #ifndef SERIAL_BUS_H
 #define SERIAL_BUS_H
 
-#include "main.hpp"
+#include "main.hpp" // TODO незабыть удалить!!!
 #include "stm32f103xb.h"
 #include <stdint.h>
 

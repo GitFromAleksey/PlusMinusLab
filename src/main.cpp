@@ -46,7 +46,7 @@ void DMA1_Channel2_3_IRQHandler();
 static void serialCallback(void *context, const SerialBus_Event *evt)
 {
 #ifdef DEBUG
-	cout << "serialCallback()" << endl;
+	cout << "serialCallback(): ";
 #endif
 	switch (evt->type)
 	{
@@ -83,6 +83,39 @@ int main ()
 #ifdef DEBUG
 		cout << "Main thread i = " << i << endl;
 
+		port.uart->DR = 'm';
+		USART1_IRQHandler();
+		port.uart->DR = 'e';
+		USART1_IRQHandler();
+		port.uart->DR = 's';
+		USART1_IRQHandler();
+		port.uart->DR = 's';
+		USART1_IRQHandler();
+		port.uart->DR = 'a';
+		USART1_IRQHandler();
+		port.uart->DR = 'g';
+		USART1_IRQHandler();
+		port.uart->DR = 'e';
+		USART1_IRQHandler();
+		port.uart->DR = '1';
+		USART1_IRQHandler();
+		SerialBus_process(&port);
+
+		port.uart->DR = 'm';
+		USART1_IRQHandler();
+		port.uart->DR = 'e';
+		USART1_IRQHandler();
+		port.uart->DR = 's';
+		USART1_IRQHandler();
+		port.uart->DR = 's';
+		USART1_IRQHandler();
+		port.uart->DR = 'a';
+		USART1_IRQHandler();
+		port.uart->DR = 'g';
+		USART1_IRQHandler();
+		port.uart->DR = 'e';
+		USART1_IRQHandler();
+		port.uart->DR = '2';
 		USART1_IRQHandler();
 #endif
 
