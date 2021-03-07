@@ -51,8 +51,7 @@ typedef struct SerialBus {
 	DMA_Channel_TypeDef * rx_dma;
 	DMA_Channel_TypeDef * tx_dma;
 	SerialBus_Handler_Type serial_bus_handler;
-	uint16_t rx_buffer_index;
-	uint16_t tx_buffer_index;
+	uint32_t buffer_lenght;
 	SerialBus_Event evt;
 } SerialBus;
 

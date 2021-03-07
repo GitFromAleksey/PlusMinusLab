@@ -67,7 +67,7 @@ static void serialCallback(void *context, const SerialBus_Event *evt)
 			break;
 		case SERIALBUS_EVENT_TRANSMIT_COMPLETE:
 #ifdef DEBUG
-	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
+//	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
 #endif
 			break;
 		default:
