@@ -17,7 +17,11 @@ using namespace std;
 #ifdef DEBUG
 	USART_TypeDef uart1;
 	#undef USART1
-	#define USART1	&uart1
+	#define USART1	((USART_TypeDef*)&uart1)
+
+	DMA_TypeDef dma1;
+	#undef DMA1
+	#define DMA1	((DMA_TypeDef*)&dma1)
 
 	DMA_Channel_TypeDef dma1_channel2;
 	DMA_Channel_TypeDef dma1_channel3;
@@ -67,7 +71,8 @@ static void serialCallback(void *context, const SerialBus_Event *evt)
 			break;
 		case SERIALBUS_EVENT_TRANSMIT_COMPLETE:
 #ifdef DEBUG
-	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE,";
+	cout << "SERIALBUS_EVENT_TRANSMIT_COMPLETE" << endl;
+	cout << evt->rx.buffer << endl;
 #endif
 			break;
 		default:
@@ -101,22 +106,57 @@ int main ()
 			USART1_IRQHandler();
 		}
 		SerialBus_process(&port);
+		for(size_t j = 0; j < 17; ++j)
+		{
+			SerialBus_process(&port);
+		}
+
+		// CPAR - будем считать , что это data register
+		for(size_t j = 0; j < sizeof(TestMsg1)-1; ++j)
+		{
+			port.rx_dma->CPAR = (uint32_t)TestMsg1[j];
+			DMA1->ISR |= DMA_ISR_TCIF2;
+			DMA1_Channel2_3_IRQHandler();
+			DMA1->ISR &= ~DMA_ISR_TCIF2;
+		}
+		SerialBus_process(&port);
 
 		for(size_t j = 0; j < 17; ++j)
+		{
+			DMA1->ISR |= DMA_ISR_TCIF3;
+			DMA1_Channel2_3_IRQHandler();
+			DMA1->ISR &= ~DMA_ISR_TCIF3;
 			SerialBus_process(&port);
-//		for(size_t j = 0; j < sizeof(TestMsg2)-1; ++j)
-//		{
-//			port.uart->DR = TestMsg2[j];
-//			USART1_IRQHandler();
-//		}
-//		SerialBus_process(&port);
-//
-//		for(size_t j = 0; j < sizeof(TestMsg3)-1; ++j)
-//		{
-//			port.uart->DR = TestMsg3[j];
-//			USART1_IRQHandler();
-//		}
-//		SerialBus_process(&port);
+		}
+
+		// CPAR - будем считать , что это data register
+		for(size_t j = 0; j < sizeof(TestMsg1)-1; ++j)
+		{
+			port.rx_dma->CPAR = (uint32_t)TestMsg2[j];
+			DMA1->ISR |= DMA_ISR_TCIF2;
+			DMA1_Channel2_3_IRQHandler();
+			DMA1->ISR &= ~DMA_ISR_TCIF2;
+		}
+		SerialBus_process(&port);
+
+		for(size_t j = 0; j < 17; ++j)
+		{
+			DMA1->ISR |= DMA_ISR_TCIF3;
+			DMA1_Channel2_3_IRQHandler();
+			DMA1->ISR &= ~DMA_ISR_TCIF3;
+			SerialBus_process(&port);
+		}
+
+		for(size_t j = 0; j < sizeof(TestMsg1)-1; ++j)
+		{
+			port.uart->DR = TestMsg3[j];
+			USART1_IRQHandler();
+		}
+		SerialBus_process(&port);
+		for(size_t j = 0; j < 17; ++j)
+		{
+			SerialBus_process(&port);
+		}
 
 #endif
 		SerialBus_process(&port);
@@ -129,18 +169,18 @@ int main ()
 void DMA1_Channel2_3_IRQHandler()
 {
 #ifdef DEBUG
-	cout << "DMA1_Channel2_3_IRQHandler()" << endl;
+//	cout << "DMA1_Channel2_3_IRQHandler()" << endl;
 #endif
 
-	uint32_t DMA_ISR = DMA1->ISR;
+	uint32_t DMA_ISR = DMA1->ISR; // DMA interrupt status register
 	if (DMA_ISR & DMA_ISR_TCIF2) //!< Channel 2 Transfer Complete flag
 	{
-		DMA1->IFCR = DMA_IFCR_CTCIF2;
+		DMA1->IFCR = DMA_IFCR_CTCIF2; // DMA interrupt flag clear register
 		SerialBus___rxDmaIRQ(&port);
 	}
 	if (DMA_ISR & DMA_ISR_TCIF3) //!< Channel 3 Transfer Complete flag
 	{
-		DMA1->IFCR = DMA_IFCR_CTCIF3;
+		DMA1->IFCR = DMA_IFCR_CTCIF3; // DMA interrupt flag clear register
 		SerialBus___txDmaIRQ(&port);
 	}
 }

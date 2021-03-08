@@ -7,7 +7,7 @@
 
 #include "serialBus.h"
 
-void SerialBus__init__(SerialBus *self,USART_TypeDef *instance,
+void SerialBus__init__(SerialBus *self, USART_TypeDef *instance,
                        DMA_Channel_TypeDef *rxDMA, DMA_Channel_TypeDef *txDMA)
 {
 #ifdef DEBUG
@@ -17,6 +17,8 @@ void SerialBus__init__(SerialBus *self,USART_TypeDef *instance,
 	self->uart = instance;
 	self->rx_dma = rxDMA;
 	self->tx_dma = txDMA;
+	self->dma_transfer_complete = false;
+	self->receive_from = SERIALBUS_RECEIVE_FROM_NONE;
 
 #ifdef DEBUG
 	cout << endl;
@@ -87,40 +89,65 @@ void SerialBus_write(SerialBus *self, uint8_t *buffer, uint32_t bufferLength)
 void SerialBus_process(SerialBus *self)
 {
 #ifdef DEBUG
-	cout << "SerialBus_process(): ";
+//	cout << "SerialBus_process(): ";
 #endif
-	SerialBus_Event event;
-	// это основной поток UART
-	// проверка буфера на наличие входящих данных
+
 	if(self->rx_data_lenght > 0)
 	{
-		event.rx.buffer = self->buffer;
-		event.rx.length = self->rx_data_lenght;
-		event.type = SERIALBUS_EVENT_DATA_RECEIVED;
+		self->event.rx.buffer = self->buffer;
+		self->event.rx.length = self->rx_data_lenght;
+		self->event.type = SERIALBUS_EVENT_DATA_RECEIVED;
 		self->rx_data_lenght = 0;
-		self->serial_bus_handler(NULL, &event);
+		self->serial_bus_handler(NULL, &self->event);
 	}
 
 	if(self->tx_data_lenght > 0)
 	{
-		if(self->uart->SR | USART_SR_TXE)	//!< Transmit Data Register Empty
+		if(self->receive_from == SERIALBUS_RECEIVE_FROM_UART)
 		{
-			if(self->tx_data_counter < self->tx_data_lenght)
+			if(self->uart->SR | USART_SR_TXE)	//!< Transmit Data Register Empty
 			{
-				self->uart->DR = self->buffer[self->tx_data_counter++]; // next byte
-				self->uart->CR1 |= USART_CR1_TE; //!< Transmitter Enable
+				if(self->tx_data_counter < self->tx_data_lenght)
+				{
+					self->uart->DR = self->buffer[self->tx_data_counter++]; // next byte
+					self->uart->CR1 |= USART_CR1_TE; //!< Transmitter Enable
+				}
+				else
+				{
+					self->tx_data_lenght = 0;
+					self->event.type = SERIALBUS_EVENT_TRANSMIT_COMPLETE;
+					self->event.rx.buffer = self->buffer;
+					self->receive_from = SERIALBUS_RECEIVE_FROM_NONE;
+					self->serial_bus_handler(NULL, &self->event);
+				}
 			}
-			else
+		}
+		else if(self->receive_from == SERIALBUS_RECEIVE_FROM_DMA)
+		{
+			if(self->dma_transfer_complete)
 			{
-				self->tx_data_lenght = 0;
-				event.type = SERIALBUS_EVENT_TRANSMIT_COMPLETE;
-				self->serial_bus_handler(NULL, &event);
+				if(self->tx_data_counter < self->tx_data_lenght)
+				{
+					// копирование байта для передачи в DMA
+					// DMA = self->buffer[self->tx_data_counter];
+					++self->tx_data_counter;
+					// разрешение передачи DMA, если нужно
+					self->dma_transfer_complete = false;
+				}
+				else
+				{
+					self->tx_data_lenght = 0;
+					self->event.type = SERIALBUS_EVENT_TRANSMIT_COMPLETE;
+					self->event.rx.buffer = self->buffer; // TODO для теста отправляемого сообщения
+					self->receive_from = SERIALBUS_RECEIVE_FROM_NONE;
+					self->serial_bus_handler(NULL, &self->event);
+				}
 			}
 		}
 	}
 
 #ifdef DEBUG
-	cout << "SerialBus_process(): END" << endl;
+//	cout << "SerialBus_process(): END" << endl;
 #endif
 }
 // ----------------------------------------------------------------------------
@@ -133,13 +160,14 @@ void SerialBus___uartIRQ(SerialBus *self)
 	// чтение принятого по UART байта
 	if(self->uart->SR & USART_SR_RXNE)
 	{
+		self->receive_from = SERIALBUS_RECEIVE_FROM_UART;
 		if(self->rx_data_lenght < self->buffer_lenght)
 		{
 			self->buffer[self->rx_data_lenght] = (self->uart->DR & 0xFF);
 			++self->rx_data_lenght;
 		}
 	}
-	// помещение принятого байта во входную очередь(буфер)
+
 #ifdef DEBUG
 //	cout << endl;
 #endif
@@ -149,12 +177,19 @@ void SerialBus___uartIRQ(SerialBus *self)
 void SerialBus___rxDmaIRQ(SerialBus *self)
 {
 #ifdef DEBUG
-	cout << "SerialBus___rxDmaIRQ()";
+//	cout << "SerialBus___rxDmaIRQ()";
 #endif
-	// чтение принятого байта по UART
-	// помещение принятого байта во входную очередь(буфер)
+
+	if(self->rx_data_lenght < self->buffer_lenght)
+	{
+		// копируем данные из DMA в буфер
+		self->buffer[self->rx_data_lenght] = (self->rx_dma->CPAR & 0xFF);
+		++self->rx_data_lenght;
+		self->receive_from = SERIALBUS_RECEIVE_FROM_DMA;
+	}
+
 #ifdef DEBUG
-	cout << endl;
+//	cout << endl;
 #endif
 }
 // ----------------------------------------------------------------------------
@@ -162,13 +197,13 @@ void SerialBus___rxDmaIRQ(SerialBus *self)
 void SerialBus___txDmaIRQ(SerialBus *self)
 {
 #ifdef DEBUG
-	cout << "SerialBus___txDmaIRQ()";
+//	cout << "SerialBus___txDmaIRQ()";
 #endif
-	// чтение байта, который на отправку из ДМА
-	// тут похоже должна быть команда на отправку данных из ДМА
+
+	self->dma_transfer_complete = true;
 
 #ifdef DEBUG
-	cout << endl;
+//	cout << endl;
 #endif
 }
 // ----------------------------------------------------------------------------

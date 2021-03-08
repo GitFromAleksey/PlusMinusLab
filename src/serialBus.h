@@ -44,18 +44,26 @@ typedef struct SerialBus_Event {
 
 typedef void (*SerialBus_Handler_Type)(void *context, const SerialBus_Event *evt);
 
+typedef enum SerialBus_ReceiveFrom {
+	SERIALBUS_RECEIVE_FROM_UART,
+	SERIALBUS_RECEIVE_FROM_DMA,
+	SERIALBUS_RECEIVE_FROM_NONE
+} SerialBus_ReceiveFrom;
 
 typedef struct SerialBus {
 	/* your members here */
+	SerialBus_ReceiveFrom receive_from;
 	USART_TypeDef * uart;
 	DMA_Channel_TypeDef * rx_dma;
 	DMA_Channel_TypeDef * tx_dma;
+	bool dma_transfer_complete;
 	SerialBus_Handler_Type serial_bus_handler;
 	uint8_t *buffer;
 	uint32_t buffer_lenght;
 	uint32_t rx_data_lenght; // кол-во принятых байт
 	uint32_t tx_data_lenght; // кол-во байт для отправки
 	uint32_t tx_data_counter; // счетчик отправленных байт
+	SerialBus_Event event;
 } SerialBus;
 
 
